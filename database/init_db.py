@@ -1,0 +1,188 @@
+"""
+SQLite Database Schema Initialization for SOC Agent
+Creates tables for audit logs, threat history, and isolation tracking.
+"""
+
+import sqlite3
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Database file location (project root)
+DB_PATH = Path(__file__).parent.parent / "soc_agent.db"
+
+def create_database():
+    """
+    Create SQLite database with all required tables.
+    Safe to run multiple times (uses IF NOT EXISTS).
+    """
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # TABLE 1: Audit Log
+    # Tracks every action taken by the agent or user
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            action_type TEXT NOT NULL,
+            user TEXT,
+            device_name TEXT,
+            success INTEGER NOT NULL,
+            details TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Index for faster queries by action type and timestamp
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_audit_action_time 
+        ON audit_log(action_type, timestamp)
+    """)
+    
+    # TABLE 2: Threat History
+    # Stores all threats discovered during hunts
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS threat_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            hunt_id TEXT,
+            threat_title TEXT NOT NULL,
+            threat_description TEXT,
+            confidence TEXT NOT NULL,
+            mitre_tactic TEXT,
+            mitre_technique TEXT,
+            mitre_id TEXT,
+            device_name TEXT,
+            table_name TEXT,
+            indicators_of_compromise TEXT,
+            recommendations TEXT,
+            log_lines TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Index for faster queries by confidence and device
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_threat_confidence_device 
+        ON threat_history(confidence, device_name)
+    """)
+    
+    # Index for faster queries by timestamp
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_threat_timestamp 
+        ON threat_history(timestamp DESC)
+    """)
+    
+    # TABLE 3: Isolation Events
+    # Tracks VM isolation for rate limiting
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS isolation_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            user TEXT NOT NULL,
+            machine_id TEXT NOT NULL,
+            device_name TEXT NOT NULL,
+            threat_id TEXT,
+            threat_title TEXT,
+            action_result TEXT NOT NULL,
+            approved_by TEXT,
+            user_decision TEXT,
+            alert_sent INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Index for rate limiting queries (last 5 minutes, last hour, last day)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_isolation_timestamp 
+        ON isolation_events(timestamp DESC)
+    """)
+    
+    # Index for user tracking
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_isolation_user 
+        ON isolation_events(user, timestamp DESC)
+    """)
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"✅ Database created successfully: {DB_PATH}")
+    print(f"📊 Tables created: audit_log, threat_history, isolation_events")
+
+def verify_database():
+    """
+    Verify database exists and show table information.
+    """
+    
+    if not DB_PATH.exists():
+        print(f"❌ Database not found: {DB_PATH}")
+        return False
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Get list of tables
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    tables = cursor.fetchall()
+    
+    print(f"\n📊 Database: {DB_PATH}")
+    print(f"📁 Size: {DB_PATH.stat().st_size} bytes")
+    print(f"\n📋 Tables:")
+    
+    for table in tables:
+        table_name = table[0]
+        cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+        count = cursor.fetchone()[0]
+        print(f"  • {table_name}: {count} records")
+    
+    conn.close()
+    return True
+
+def reset_database():
+    """
+    Delete and recreate database (for development/testing).
+    WARNING: This deletes all data!
+    """
+    
+    if DB_PATH.exists():
+        response = input(f"⚠️  Delete existing database at {DB_PATH}? (yes/no): ").strip().lower()
+        if response == "yes":
+            DB_PATH.unlink()
+            print(f"🗑️  Database deleted")
+        else:
+            print("Cancelled")
+            return
+    
+    create_database()
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("SOC Agent Database Initialization")
+    print("=" * 60)
+    print("\nOptions:")
+    print("1. Create database (safe, won't delete existing data)")
+    print("2. Verify database")
+    print("3. Reset database (WARNING: deletes all data)")
+    print("4. Exit")
+    print() 
+
+    choice = input("Select option (1-4): ").strip()
+    
+    if choice == "1":
+        create_database()
+        verify_database()
+    elif choice == "2":
+        verify_database()
+    elif choice == "3":
+        reset_database()
+        verify_database()
+    elif choice == "4":
+        print("Exiting.")
+    else:
+        print("Invalid choice")
