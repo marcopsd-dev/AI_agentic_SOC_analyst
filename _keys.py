@@ -70,9 +70,8 @@ def validate_configuration():
 # Validate configuration on module import
 validate_configuration()
 
-# ============================================================================
 # HELPER FUNCTIONS
-# ============================================================================
+
 
 def get_config_summary():
     """Return a safe summary of current configuration (no secrets exposed)."""
