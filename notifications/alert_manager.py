@@ -55,7 +55,7 @@ def send_email_alert(subject: str, body: str, to_email: str ) -> bool:
         with smtplib.SMTP(_keys.SMTP_SERVER, _keys.SMTP_PORT, timeout=10) as server:
             server.starttls()
             server.login(_keys.SMTP_USER, _keys.SMTP_PASSWORD)
-            server.send_messgae(msg)
+            server.send_message(msg)
 
         print(f"{Fore.GREEN} ✅ Email alert sent to {to_email} {Style.RESET_ALL}")
         return True
@@ -64,19 +64,21 @@ def send_email_alert(subject: str, body: str, to_email: str ) -> bool:
         print(f"{Fore.RED}❌ Failed to send email alert: {e} {Style.RESET_ALL}")
         return False
 
-def alert_rate_limit_exceeded(isolation_count: int, time_window: str, device_name: str ) -> bool:
-
+def alert_rate_limit_exceeded(isolation_count: int, time_window: str, 
+                              device_name: str = None) -> bool:
     """
     Alert when isolation rate limit is exceeded.
     
     Args:
         isolation_count: Number of isolations in the time window
         time_window: Description of time window (e.g., "5 minutes", "1 hour")
-        device_name: Device name (if applicable)
+        device_name: Device name (if applicable, optional)
     """
-
+    
     subject = f"🚨 SOC Agent Alert: Rate Limit Exceeded ({isolation_count} isolations in {time_window})"
-
+    
+    device_info = f"- Device: {device_name}" if device_name else "- Device: Multiple devices"
+    
     body = f"""
 SOC Agent Rate Limit Alert
 ===========================
@@ -86,7 +88,7 @@ Event: Isolation rate limit exceeded
 
 Details:
 - Isolations: {isolation_count} in {time_window}
-- Device: {device_name or 'Multiple devices'}
+{device_info}
 - Status: Agent activity paused pending review
 
 Action Required:
@@ -99,10 +101,10 @@ This could indicate:
 Please review recent isolation events and approve continuation if appropriate.
 
 --
-Automated alert from: Warne your AI SOC Threat Hunter.
+Automated alert from AI SOC Threat Hunter
 """
-
-    return send_email_alert(subject, body)
+    
+    return send_email_alert(subject, body, to_email=None)
 
 def alert_isolation_declined(device_name: str, threat_title: str, 
                             threat_confidence: str, user: str = "system") -> bool:
@@ -139,7 +141,7 @@ Please review the threat assessment and ensure appropriate alternative actions a
 Automated alert from: Warne your AI SOC Threat Hunter.
 """
     
-    return send_email_alert(subject, body)
+    return send_email_alert(subject, body, to_email=None)
 
 def alert_mass_isolation_attempt(isolation_count: int, user: str = "system") -> bool:
     """
@@ -180,7 +182,7 @@ To unlock: Delete the .lock file in the agent directory after investigation.
 CRITICAL AUTOMATED ALERT from: Warne your AI SOC Threat Hunter.
 """
     
-    return send_email_alert(subject, body)
+    return send_email_alert(subject, body, to_email=None)
 
 def alert_daily_limit_reached(user: str = "system") -> bool:
     """
@@ -215,7 +217,7 @@ or contact the agent administrator.
 Automated alert from: Warne your AI SOC Threat Hunter.
 """
     
-    return send_email_alert(subject, body)
+    return send_email_alert(subject, body, to_email=None)
 
 def alert_mass_isolation_decision(device_count: int, threat_count: int, 
                                   decision: str, user: str = "system",
@@ -275,7 +277,7 @@ Decision Summary:
 Automated alert from: Warne your AI SOC Threat Hunter.
 """
     
-    return send_email_alert(subject, body)
+    return send_email_alert(subject, body, to_email=None)
 
 if __name__ == "__main__":
 

@@ -27,6 +27,7 @@ SMTP_PORT = int(smtp_port_str) if smtp_port_str and smtp_port_str.strip() else 5
 SMTP_USER = os.getenv('SMTP_USER', '')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
 SOC_LEAD_EMAIL = os.getenv('SOC_LEAD_EMAIL', '')
+ALERT_FROM_EMAIL = os.getenv('ALERT_FROM_EMAIL', '')  
 
 
 # APPLICATION SETTINGS
